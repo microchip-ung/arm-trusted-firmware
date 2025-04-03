@@ -85,4 +85,5 @@ uintptr_t microchip_plat_sip_handler(uint32_t smc_fid,
 				     void *handle,
 				     u_register_t flags);
 
+bool microchip_plat_is_ns_memory(uint32_t size, uintptr_t addr);
 #endif
