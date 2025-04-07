@@ -71,9 +71,6 @@ u_register_t microchip_plat_boot_offset(void)
 
 bool microchip_plat_is_ns_memory(uint32_t size, uintptr_t addr)
 {
-	size_t my_size = PLAT_LAN969X_NS_IMAGE_SIZE;
-	uintptr_t my_base = PLAT_LAN969X_NS_IMAGE_BASE;
-
 	if (addr > (BL31_BASE + BL31_SIZE)) {
 		if (addr + size < (LAN969X_SRAM_BASE + LAN969X_SRAM_SIZE)) {
 			return true;
