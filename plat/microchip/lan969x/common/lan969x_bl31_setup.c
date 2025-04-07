@@ -74,14 +74,21 @@ bool microchip_plat_is_ns_memory(uint32_t size, uintptr_t addr)
 	size_t my_size = PLAT_LAN969X_NS_IMAGE_SIZE;
 	uintptr_t my_base = PLAT_LAN969X_NS_IMAGE_BASE;
 
-	if (size > my_size)
+	if (addr > (BL31_BASE + BL31_SIZE)) {
+		if (addr + size < (LAN969X_SRAM_BASE + LAN969X_SRAM_SIZE)) {
+			return true;
+		} else {
+			return false;
+		}
+	} else if (addr < BL31_BASE && addr > LAN969X_SRAM_BASE) {
+		if (addr + size < BL31_BASE) {
+			return true;
+		} else {
+			return false;
+		}
+	} else {
 		return false;
-	if (addr < my_base)
-		return false;
-	if ((addr + size) > (my_base + my_size))
-		return false;
-
-	return true;
+	}
 }
 
 u_register_t microchip_plat_sram_info(u_register_t index,
