@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ungsw-tfa-build-env
+spec:
+  containers:
+    - name: tfa-builder
+      image: artifacts.microchip.com:7999/ung/tfa/build-tfa:0.1
+      imagePullPolicy: Always
+      command: ['cat']
+      tty: true
+      resources:
+        requests:
+          cpu: "2"
+          memory: 16Gi
+        limits:
+          cpu: "2"
+          memory: 16Gi
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
