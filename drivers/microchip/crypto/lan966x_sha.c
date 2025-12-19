@@ -22,6 +22,8 @@
 
 #define CHKST_OK		5 /* Code for hash verified */
 
+#define DEFAULT_TIMEOUT_US	(10000U)	/* 10ms */
+
 static const uint32_t base = LAN966X_SHA_BASE;
 
 typedef struct {
@@ -73,13 +75,12 @@ void sha_init(void)
 	mmio_write_32(SHA_SHA_CR(base), SHA_SHA_CR_SWRST(1));
 }
 
-#define MAX_TIMEOUT_US	(10000U)	/* 10ms */
-static uint32_t sha_wait_flag(uint32_t mask)
+static uint32_t sha_wait_flag(uint32_t mask, uint32_t max_us)
 {
 	uint64_t timeout;
 	uint32_t s;
 
-	timeout = timeout_init_us(MAX_TIMEOUT_US);
+	timeout = timeout_init_us(max_us);
 	while (true) {
 		s = mmio_read_32(SHA_SHA_ISR(base));
 		if (s & SHA_SHA_ISR_SECE_ISR_M) {
@@ -102,7 +103,7 @@ static void sha_start_process(void)
 	/* Start processing */
 	mmio_write_32(SHA_SHA_CR(base), SHA_SHA_CR_START(1));
 	/* Wait until processed */
-	(void) sha_wait_flag(SHA_SHA_ISR_DATRDY_ISR_M);
+	(void) sha_wait_flag(SHA_SHA_ISR_DATRDY_ISR_M, DEFAULT_TIMEOUT_US);
 }
 
 static struct hash_state *
@@ -207,13 +208,17 @@ static int _sha_finish(struct hash_state *st, const void *out_hash)
 
 	/* Wait for DMA processing to end */
 	if (st->dma) {
+		uint32_t wait_us;
+		w = mmio_read_32(SHA_SHA_MSR(base));
+		/* Calculate time to wait: 10ms per MB data */
+		wait_us = div_round_up(w, SIZE_M(1)) * DEFAULT_TIMEOUT_US;
 		/* Must see DATRDY before proceeding */
-		(void) sha_wait_flag(SHA_SHA_ISR_DATRDY_ISR_M);
+		(void) sha_wait_flag(SHA_SHA_ISR_DATRDY_ISR_M, MAX(DEFAULT_TIMEOUT_US, wait_us));
 	}
 
 	/* Wait until checked */
 	if (st->verify) {
-		w = sha_wait_flag(SHA_SHA_ISR_CHECKF_ISR_M);
+		w = sha_wait_flag(SHA_SHA_ISR_CHECKF_ISR_M, DEFAULT_TIMEOUT_US);
 		VERBOSE("Check(%08x) -> %d\n", w, (unsigned int) SHA_SHA_ISR_CHKST_ISR_X(w));
 		return SHA_SHA_ISR_CHKST_ISR_X(w) == CHKST_OK ?
 			CRYPTO_SUCCESS : CRYPTO_ERR_SIGNATURE;
@@ -245,7 +250,12 @@ int sha_calc(lan966x_sha_type_t hash_type, const void *input, size_t len, void *
 
 	struct hash_state *st = _sha_init(hash_type, len, NULL, hinfo->hash_len);
 
-	_sha_update(st, input, len);
+	while (len) {
+		uint32_t chunk = MIN((size_t) SIZE_M(1), len);
+		_sha_update(st, input, chunk);
+		input += chunk;
+		len -= chunk;
+	}
 
 	return _sha_finish(st, hash);
 }
