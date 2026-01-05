@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Copyright (c) 2021-2026 Microchip Technology Inc. and its subsidiaries.
+#
+# Unpublished rights reserved under the copyright laws of the United States
+# of America, other countries and international treaties. Permission to use,
+# copy, store and modify, the software and its source code is granted but
+# only in connection with products utilizing the Microsemi switch and PHY
+# products.  Permission is also granted for you to integrate into other
+# products, disclose, transmit and distribute the software only in an
+# absolute machine readable format (e.g. HEX file) and only in or with
+# products utilizing the Microsemi switch and PHY products.  The source code
+# of the software may not be disclosed, transmitted or distributed without
+# the prior written permission of Microsemi.
+#
+# This copyright notice must appear in any copy, modification, disclosure,
+# transmission or distribution of the software.  Microsemi retains all
+# ownership, copyright, trade secret and proprietary rights in the software
+# and its source code, including all modifications thereto.
+#
+# THIS SOFTWARE HAS BEEN PROVIDED "AS IS". MICROSEMI HEREBY DISCLAIMS ALL
+# WARRANTIES OF ANY KIND WITH RESPECT TO THE SOFTWARE, WHETHER SUCH
+# WARRANTIES ARE EXPRESS, IMPLIED, STATUTORY OR OTHERWISE INCLUDING, WITHOUT
+# LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR USE OR
+# PURPOSE AND NON-INFRINGEMENT.
+
+#This script will build two docker images build-env and build-env-mchp based
+#on the Dockerfile and mchp.Dockerfile respectively.
+#This script should reside in the same direcoty as the dockerfiles.
+
+set -e
+
+# Check if argument is provided
+if [ $# -eq 0 ]; then
+  echo "Error: No input provided. Exiting."
+  echo "Please add docker image tag version as argument"
+  echo "Example: ./docker-build 1.30"
+  exit 1
+else
+  build_version=$1
+fi
+
+# Test we are in the correct
+if [ ! -f ./Dockerfile ]; then
+  echo "Please cd to the" `dirname $0` "directory before running this script"
+  exit 1
+fi
+
+get_tar_archive () {
+  if [ ! -f $2 ]; then
+    echo "$2 not found"
+    wget http://mscc-ent-open-source.s3-eu-west-1.amazonaws.com/public_root/$1/$2
+  else
+    echo "Have $2 already, skipping wget"
+  fi
+}
+
+get_tar_archive bsp       mscc-brsdk-arm-2024.06.tar.gz
+get_tar_archive bsp       mscc-brsdk-arm64-2024.06.tar.gz
+get_tar_archive toolchain mscc-toolchain-bin-2024.02-105.tar.gz
+
+docker build -t build-tfa .
+
+docker tag build-tfa ghcr.io/microchip-ung/build-tfa:$build_version
+
+read -p "Please press RETURN to login in to GHCR and push the image" -n 1 -r
+
+echo "Please enter your github GHCR access token"
+docker login ghcr.io
+
+docker push build-tfa ghcr.io/microchip-ung/build-tfa:$build_version
+
+#docker logout
+
+echo "Please make a note of the digests and"
+echo "Point to the new Docker image by modifying .docker.env"

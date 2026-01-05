@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
     - name: tfa-builder
-      image: artifacts.microchip.com:7999/ung/tfa/build-tfa:0.1
+      image: ghcr.io/microchip-ung/build-tfa:1.0
       imagePullPolicy: Always
       command: ['cat']
       tty: true
