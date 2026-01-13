@@ -126,8 +126,11 @@ static void handle_otp_random(bootstrap_req_t *req)
 			}
 
 			/* Read TRNG data */
-			for (i = 0; i < div_round_up(datalen, sizeof(uint32_t)); i++)
-				data[i] = lan966x_trng_read();
+			for (i = 0; i < div_round_up(datalen, sizeof(uint32_t)); i++) {
+				if (!lan966x_trng_read(&data[i])) {
+					return;
+				}
+			}
 
 			/* Write to OTP */
 			if (otp_write_bytes(req->arg0, datalen, (uint8_t *)data) == 0)

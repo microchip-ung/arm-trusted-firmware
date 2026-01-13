@@ -35,18 +35,6 @@ static void lan966x_trng_init(void)
 	}
 }
 
-uint32_t lan966x_trng_read(void)
-{
-	/* Be sure init is called */
-	lan966x_trng_init();
-	/* Wait for data rdy */
-	while ((mmio_read_32(TRNG_TRNG_ISR(LAN966X_TRNG_BASE)) &
-		TRNG_TRNG_ISR_DATRDY_ISR_M) == 0)
-		;
-	/* then, read the data and return it */
-	return mmio_read_32(TRNG_TRNG_ODATA(LAN966X_TRNG_BASE));
-}
-
 static bool plat_entropy_read(uint32_t *data)
 {
 	uint64_t timeout = timeout_init_us(TRNG_READY_TIMEOUT_US);
@@ -63,6 +51,16 @@ static bool plat_entropy_read(uint32_t *data)
 	}
 	ERROR("Timeout waiting for TRNG ready\n");
 	return false;
+}
+
+bool lan966x_trng_read(uint32_t *data)
+{
+	// It was observed in https://jira.microchip.com/browse/LMSTAX-1388
+	// that it is unreliable to poll TRNG_ISR_DATRDY too fast.
+	// Apparently checking a timeout every iteration
+	// introduces enough delay to workaround this.
+	lan966x_trng_init();
+	return plat_entropy_read(data);
 }
 
 void plat_entropy_setup(void)
