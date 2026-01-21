@@ -61,9 +61,6 @@ static uintptr_t enc_dev_handle;
 
 static uint8_t mmc_buf[MMC_BUF_SIZE] __attribute__ ((aligned (MMC_BLOCK_SIZE)));
 
-#if defined(IMAGE_BL2) && defined(LAN969X_LMSTAX)
-static bool primary_image_failure;
-#endif
 
 static const io_block_dev_spec_t mmc_dev_spec = {
 	.buffer = {
@@ -92,10 +89,6 @@ enum {
 	FIP_SELECT_DEFAULT,	/* "fip" */
 	FIP_SELECT_FALLBACK,	/* "fip.bak" */
 	FIP_SELECT_RAW,		/* Start of device */
-#if defined(IMAGE_BL2) && defined(LAN969X_LMSTAX)
-	FIP_SELECT_NOR_NT_FIP1,	/* NOR-Raw */
-	FIP_SELECT_NOR_NT_FIP2,	/* NOR-Raw */
-#endif
 };
 static int fip_select;
 static bool fip_spec_valid;
@@ -413,44 +406,6 @@ struct nor_image_select {
 	uint32_t data[16];
 };
 
-#if defined(IMAGE_BL2) && defined(LAN969X_LMSTAX)
-static int nor_get_dual_fip_offset(bool primary)
-{
-	/* We use MTD access layer */
-	struct nor_image_select sel;
-	size_t nread;
-
-	/* Read selector data */
-	if (spi_nor_read(LAN969X_QSPI0_SEL_OFFSET, (uintptr_t) &sel, sizeof(sel), &nread) != 0 ||
-	    nread != sizeof(sel))
-		goto natural;
-
-	/* Do we have an initialized FIP select marker? */
-	if (sel.magic[0] == NOR_IMAGE_SEL_MAGIC &&
-	    sel.magic[1] == (uint32_t) ~NOR_IMAGE_SEL_MAGIC &&
-	    sel.magic[2] == NOR_IMAGE_SEL_MAGIC &&
-	    sel.magic[3] == (uint32_t) ~NOR_IMAGE_SEL_MAGIC) {
-		int i, ct;
-
-		/* Then count one bits */
-		for (ct = i = 0; i < ARRAY_SIZE(sel.data); i++)
-			ct += __builtin_popcount(sel.data[i]);
-
-		VERBOSE("QSPI0: Have marker - count %d\n", ct);
-		if ((ct % 2) == 0)
-			goto natural;
-
-		/* Odd = flipped: backwards order */
-		return primary ? LAN969X_QSPI0_FIP2_OFFSET : LAN969X_QSPI0_FIP1_OFFSET;
-	} else {
-		VERBOSE("QSPI0: No FIP select marker\n");
-	}
-
-	/* No marker or even count: natural order */
-natural:
-	return primary ? LAN969X_QSPI0_FIP1_OFFSET : LAN969X_QSPI0_FIP2_OFFSET;
-}
-#endif
 
 static bool lan969x_get_fip_addr(int fip_src)
 {
@@ -468,14 +423,6 @@ static bool lan969x_get_fip_addr(int fip_src)
 		fip_block_spec.length = SIZE_M(2); /* Conservative default */
 		return true;
 
-#if defined(IMAGE_BL2) && defined(LAN969X_LMSTAX)
-	case FIP_SELECT_NOR_NT_FIP1:
-	case FIP_SELECT_NOR_NT_FIP2:
-		fip_block_spec.offset = nor_get_dual_fip_offset(fip_src == FIP_SELECT_NOR_NT_FIP1);
-		fip_block_spec.length = NT_FIP_SIZE;
-		NOTICE("Try FIP at offset %08zx\n", fip_block_spec.offset);
-		return true;
-#endif
 
 	default:
 		break;
@@ -704,12 +651,6 @@ int bl2_plat_handle_pre_image_load(unsigned int image_id)
 {
 	/* Start with the default FIP */
 	fip_select = FIP_SELECT_DEFAULT;
-#if defined(LAN969X_LMSTAX)
-	if (lan966x_get_boot_source() == BOOT_SOURCE_QSPI) {
-		/* Skip loading from 'default' FIP */
-		fip_select = FIP_SELECT_NOR_NT_FIP1;
-	}
-#endif
 	fip_spec_valid = lan969x_get_fip_addr(fip_select);
 
 	return 0;
@@ -740,10 +681,6 @@ void plat_handle_image_error(unsigned int image_id, int err)
 		INFO("AUTH: Invalidate parent image: %d\n", image_id);
 		auth_img_flags[image_id] &= ~IMG_FLAG_AUTHENTICATED;
 	}
-#if defined(LAN969X_LMSTAX)
-	if (fip_select == FIP_SELECT_NOR_NT_FIP1)
-		primary_image_failure = true;
-#endif
 #endif
 }
 
@@ -766,18 +703,6 @@ int plat_try_next_boot_source(void)
 		fip_spec_valid = lan969x_get_fip_addr(fip_select);
 		return 1;	/* Try again */
 	}
-#if defined(IMAGE_BL2) && defined(LAN969X_LMSTAX)
-	if (fip_select == FIP_SELECT_RAW) {
-		fip_select = FIP_SELECT_NOR_NT_FIP1;
-		fip_spec_valid = lan969x_get_fip_addr(fip_select);
-		return 1;	/* Try again */
-	}
-	if (fip_select == FIP_SELECT_NOR_NT_FIP1) {
-		fip_select = FIP_SELECT_NOR_NT_FIP2;
-		fip_spec_valid = lan969x_get_fip_addr(fip_select);
-		return 1;	/* Try again */
-	}
-#endif
 	return 0;		/* No more */
 }
 
