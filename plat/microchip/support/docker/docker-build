@@ -68,7 +68,7 @@ read -p "Please press RETURN to login in to GHCR and push the image" -n 1 -r
 echo "Please enter your github GHCR access token"
 docker login ghcr.io
 
-docker push build-tfa ghcr.io/microchip-ung/build-tfa:$build_version
+docker push ghcr.io/microchip-ung/build-tfa:$build_version
 
 #docker logout
 

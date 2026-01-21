@@ -64,7 +64,11 @@ pipeline {
 
     stage('Archive') {
       steps {
-        archiveArtifacts artifacts: 'artifacts/**, keys/*'
+        withCredentials([usernamePassword(credentialsId: 'Test4', usernameVariable: 'ARTIFACTORY_USER', passwordVariable: 'ARTIFACTORY_PASS')]) {
+          container('tfa-builder') {
+            sh "./scripts/artifactory-ci -vvv --no-threads artifacts keys"
+          }
+        }
       }
     }
   }

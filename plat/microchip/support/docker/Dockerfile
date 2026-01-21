@@ -30,6 +30,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
   && update-locale LANG=en_US.UTF-8 LANGUAGE=en \
   && git config --system user.email "br@example.com" && git config --system user.name "Build Root"
 
+# Artifactory schema support
+RUN gem install json_schemer -v '2.3.0' --source 'https://rubygems.org/'
+
 # Pre-install images
 ADD mscc-brsdk-arm-2024.06.tar.gz /opt/mscc
 ADD mscc-brsdk-arm64-2024.06.tar.gz /opt/mscc

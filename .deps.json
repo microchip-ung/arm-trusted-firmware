@@ -2,8 +2,8 @@
     {
         "id": "build-tfa",
         "type": "docker",
-        "tag": "1.0",
-        "sha": "sha256:de12be28c8ee8a3b263809f9d919e02f5df504c88bf7c11d54e2f32649e70d60",
+        "tag": "1.1",
+        "sha": "sha256:18abc59010ad6b4a310502b50d61311ddf9a1874e9314721e1164d4ad28de6a0",
         "name": "ghcr.io/microchip-ung/build-tfa"
     }
 ]
