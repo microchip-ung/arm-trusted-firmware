@@ -117,7 +117,10 @@ static int aes_setkey(bool cipher, const unsigned char *key,
 
 	mmio_write_32(AES_AES_MR(base),
 		      AES_AES_MR_SMOD(AES_SMOD_DMA) | /* Always use DMA */
-		      AES_AES_MR_CIPHER(cipher) | /* Decrypt = 0 / Encrypt = 1 */
+		      AES_AES_MR_DUALBUFF(1) |        /* - and dual buffered */
+		      AES_AES_MR_CIPHER(cipher) |     /* Decrypt = 0 / Encrypt = 1 */
+		      AES_AES_MR_CKEY(0xE) |	      /* Magic value to write CM fields */
+		      AES_AES_MR_CMTYP6(1) |	      /* All other CM is off */
 		      AES_AES_MR_KEYSIZE(kc) |
 		      AES_AES_MR_OPMOD(AES_OPMOD_GCM) |
 		      AES_AES_MR_GTAGEN(1));
