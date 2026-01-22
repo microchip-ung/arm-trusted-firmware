@@ -70,6 +70,21 @@ pipeline {
           }
         }
       }
+      post {
+        success {
+          echo "Release ${env.VERSION_FULL} build completed successfully"
+          script {
+            currentBuild.description = """
+Artifacts: <a
+href="https://artifacts-aws.devops.microchip.com/artifactory/ung-generic-dev-local/ci/${env.JOB_NAME}/${env.BUILD_NUMBER}/">
+${env.JOB_NAME} build ${env.BUILD_NUMBER}</a>
+"""
+          }
+        }
+        unsuccessful {
+          echo "Release ${env.VERSION_FULL} build failed"
+        }
+      }
     }
   }
 
