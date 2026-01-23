@@ -41,8 +41,6 @@ pipeline {
       PATH = "${env.WORKSPACE}/scripts/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   }
 
-  triggers{ cron(env.BRANCH_NAME == 'tfa.main' ? 'TZ=Europe/Copenhagen\n0 0 * * *' : '') }
-
   stages {
     stage('Prepare') {
       steps {
