@@ -7,6 +7,6 @@
 #ifndef LAN966X_TRNG_H
 #define LAN966X_TRNG_H
 
-uint32_t lan966x_trng_read(void);
+bool lan966x_trng_read(uint32_t *data);
 
 #endif  /* LAN966X_TRNG_H */

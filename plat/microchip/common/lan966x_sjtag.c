@@ -41,7 +41,12 @@ void lan966x_sjtag_configure(void)
 
 		/* Generate nonce */
 		for (i = 0; i < SJTAG_NREGS_KEY; i++) {
-			sjtag_nonce.w[i] = lan966x_trng_read();
+			if (!lan966x_trng_read(&sjtag_nonce.w[i])) {
+				return;
+			}
+		}
+
+		for(i = 0; i < SJTAG_NREGS_KEY; i++) {
 			mmio_write_32(SJTAG_NONCE(LAN966X_SJTAG_BASE, i), sjtag_nonce.w[i]);
 		}
 

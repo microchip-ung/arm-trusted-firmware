@@ -69,7 +69,9 @@ fw_bind_res_t handle_bind_encrypt(const uintptr_t fip_base_addr,
 
 		/* Initialize iv array with random data */
 		for (i = 0; i < ARRAY_SIZE(iv); i++) {
-			iv[i] = lan966x_trng_read();
+			if (!lan966x_trng_read(&iv[i])) {
+				return FW_ENCRYPT;
+			}
 		}
 
 		/* Encrypt image data on-the-fly in memory  */

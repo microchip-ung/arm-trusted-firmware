@@ -189,7 +189,9 @@ static uintptr_t sip_ns_encrypt(uintptr_t enc, uintptr_t data, void *handle)
 
 	/* Initialize iv array with random data */
 	for (int i = 0; i < ARRAY_SIZE(iv); i++) {
-		iv[i] = lan966x_trng_read();
+		if (!lan966x_trng_read(&iv[i])) {
+			SMC_RET1(handle, SMC_UNK);
+		}
 	}
 
 	/* Encrypt image data on-the-fly in memory  */
