@@ -69,6 +69,25 @@ u_register_t microchip_plat_boot_offset(void)
 	return bl31_params.boot_offset;
 }
 
+bool microchip_plat_is_ns_memory(uint32_t size, uintptr_t addr)
+{
+	if (addr > (BL31_BASE + BL31_SIZE)) {
+		if (addr + size < (LAN969X_SRAM_BASE + LAN969X_SRAM_SIZE)) {
+			return true;
+		} else {
+			return false;
+		}
+	} else if (addr < BL31_BASE && addr > LAN969X_SRAM_BASE) {
+		if (addr + size < BL31_BASE) {
+			return true;
+		} else {
+			return false;
+		}
+	} else {
+		return false;
+	}
+}
+
 u_register_t microchip_plat_sram_info(u_register_t index,
 				      u_register_t *addr,
 				      u_register_t *size)

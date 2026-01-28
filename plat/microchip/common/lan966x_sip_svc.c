@@ -74,7 +74,8 @@ u_register_t microchip_plat_bl2_version(void)
 	return 0;
 }
 
-static bool is_ns_ddr(uint32_t size, uintptr_t addr)
+#pragma weak microchip_plat_is_ns_memory
+bool microchip_plat_is_ns_memory(uint32_t size, uintptr_t addr)
 {
 	size_t my_size = microchip_plat_ns_ddr_size();
 	uintptr_t my_base = microchip_plat_ns_ddr_base();
@@ -106,7 +107,7 @@ static uintptr_t sip_sjtag_get_challenge(uintptr_t challenge, size_t size, void 
 {
 	lan966x_key32_t key;
 
-	if (!is_ns_ddr(size, challenge) ||
+	if (!microchip_plat_is_ns_memory(size, challenge) ||
 	    size != ARRAY_SIZE(key.b)) {
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 	} else {
@@ -125,7 +126,7 @@ static uintptr_t sip_sjtag_get_challenge(uintptr_t challenge, size_t size, void 
 
 static uintptr_t sip_sjtag_unlock(uintptr_t response, size_t size, void *handle)
 {
-	if (!is_ns_ddr(size, response) ||
+	if (!microchip_plat_is_ns_memory(size, response) ||
 	    size != LAN966X_KEY32_LEN) {
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 	} else {
@@ -140,7 +141,7 @@ static uintptr_t sip_sjtag_unlock(uintptr_t response, size_t size, void *handle)
 
 static uintptr_t sip_fw_bind(uintptr_t fip, uint32_t size, void *handle)
 {
-	if (!is_ns_ddr(size, fip)) {
+	if (!microchip_plat_is_ns_memory(size, fip)) {
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 	} else {
 		lan966x_key32_t sha_in, sha_out;
@@ -168,13 +169,13 @@ static uintptr_t sip_ns_encrypt(uintptr_t enc, uintptr_t data, void *handle)
 	size_t key_len = sizeof(key);
 	int result;
 
-	if (!is_ns_ddr(sizeof(*encp), enc))
+	if (!microchip_plat_is_ns_memory(sizeof(*encp), enc))
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 
 	/* Invalidate cache for args */
 	inv_dcache_range(enc, sizeof(*encp));
 
-	if (!is_ns_ddr(encp->data_length, data))
+	if (!microchip_plat_is_ns_memory(encp->data_length, data))
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 
 	if (!is_valid_enc_hdr(encp))
@@ -221,13 +222,13 @@ static uintptr_t sip_ns_decrypt(uintptr_t enc, uintptr_t data, void *handle)
 	size_t key_len = sizeof(key);
 	int result;
 
-	if (!is_ns_ddr(sizeof(*encp), enc))
+	if (!microchip_plat_is_ns_memory(sizeof(*encp), enc))
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 
 	/* Invalidate cache for args */
 	inv_dcache_range(enc, sizeof(*encp));
 
-	if (!is_ns_ddr(encp->data_length, data))
+	if (!microchip_plat_is_ns_memory(encp->data_length, data))
 		SMC_RET1(handle, SMC_ARCH_CALL_INVAL_PARAM);
 
 	if (!is_valid_enc_hdr(encp) ||
