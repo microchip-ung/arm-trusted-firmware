@@ -146,11 +146,13 @@ void bl2_platform_setup(void)
 	lan969x_pcie_ep_init(lan966x_get_dt());
 #endif
 
+#if !defined(LAN969X_LMSTAX)
 	/* Init DDR */
 	lan966x_ddr_init(lan966x_get_dt());
 
 	/* Init PCIe Endpoint */
 	lan969x_pcie_ep_init(lan966x_get_dt());
+#endif
 }
 
 /*******************************************************************************
