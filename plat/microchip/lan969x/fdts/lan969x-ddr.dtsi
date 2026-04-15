@@ -5,7 +5,7 @@
  */
 
 &ddr {
-	microchip,mem-name = "lan969x_evb_ddr4 2023-07-19-14:24:18 193b2e888363";
+	microchip,mem-name = "lan969x_evb_ddr4 2026-04-16-09:34:19 87c23aab7e44";
 	microchip,mem-speed = <2400>;
 	microchip,mem-size = <0x38000000>;
 	microchip,mem-bus-width = <16>;
@@ -34,15 +34,15 @@
 	>;
 
 	microchip,timing-reg = <
-		0x17131413	/* dramtmg0 */
+		0x18131414	/* dramtmg0 */
 		0x0007051b	/* dramtmg1 */
 		0x1a000010	/* dramtmg12 */
 		0x090b0512	/* dramtmg2 */
 		0x0000400c	/* dramtmg3 */
-		0x08040409	/* dramtmg4 */
+		0x08040408	/* dramtmg4 */
 		0x07070404	/* dramtmg5 */
 		0x05040c07	/* dramtmg8 */
-		0x0003040d	/* dramtmg9 */
+		0x0002040f	/* dramtmg9 */
 		0x07000610	/* odtcfg */
 		0x004900d3	/* rfshtmg */
 	>;
