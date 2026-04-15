@@ -8,7 +8,7 @@
 
 const struct ddr_config lan966x_ddr_config = {
 	.info = {
-		.name = "lan966x 2023-08-14-10:53:11 416024f90cff",
+		.name = "lan966x 2026-04-16-09:24:47 87c23aab7e44",
 		.speed = 1200,
 		.size = 0x38000000,
 		.bus_width = 16,
@@ -33,15 +33,15 @@ const struct ddr_config lan966x_ddr_config = {
 	},
 
 	.timing = {
-		.dramtmg0 = 0x0a0f0b0c,
-		.dramtmg1 = 0x00020211,
+		.dramtmg0 = 0x0b0f0b0c,
+		.dramtmg1 = 0x00020311,
 		.dramtmg2 = 0x00000508,
 		.dramtmg3 = 0x0000400c,
-		.dramtmg4 = 0x05020306,
+		.dramtmg4 = 0x05020305,
 		.dramtmg5 = 0x04040303,
 		.dramtmg8 = 0x00000803,
 		.odtcfg = 0x0600060c,
-		.rfshtmg = 0x00820057,
+		.rfshtmg = 0x00280057,
 	},
 
 	.mapping = {
