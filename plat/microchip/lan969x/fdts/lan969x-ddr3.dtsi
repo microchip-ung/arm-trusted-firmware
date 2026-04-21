@@ -5,7 +5,7 @@
  */
 
 &ddr {
-	microchip,mem-name = "lan969x_svb_ddr3 2023-07-25-09:19:52 2511176";
+	microchip,mem-name = "lan969x_svb_ddr3 2026-04-16-09:34:35 87c23aab7e44";
 	microchip,mem-speed = <1600>;
 	microchip,mem-size = <0x40000000>;
 	microchip,mem-bus-width = <16>;
@@ -44,7 +44,7 @@
 		0x03030804	/* dramtmg8 */
 		0x0004040d	/* dramtmg9 */
 		0x0600060c	/* odtcfg */
-		0x00820068	/* rfshtmg */
+		0x00300068	/* rfshtmg */
 	>;
 
 	microchip,mapping-reg = <
