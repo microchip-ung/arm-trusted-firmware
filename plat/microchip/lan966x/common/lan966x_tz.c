@@ -26,7 +26,8 @@ static void setup_tzaesb(uintptr_t tzaesb)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(keys); i++)
-		keys[i] = lan966x_trng_read();
+		while(!lan966x_trng_read(&keys[i]))
+			udelay(1);
 
 	/* KEY REGS */
 	mmio_write_32(TZAESBNS_TZAESB_MR(tzaesb),
