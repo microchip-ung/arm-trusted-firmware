@@ -10,24 +10,27 @@
 #include <drivers/microchip/silex_crypto.h>
 #include <silexpk/sxbuf/sxbufop.h>
 #include <silexpk/sxops/eccweierstrass.h>
-#include <silexpk/iomem.h>
 
 static struct sx_pk_cnx *gbl_cnx;
 static struct sx_pk_ecurve nistp256_curve;
 
-/** MPI 2 memory. mbedTLS use LE format */
+/** MPI 2 memory. mbedTLS use LE format
+ *
+ * The BA414e PK accelerator expects a fixed-width, big-endian operand
+ * with any zero padding at the FRONT (SX_PK_OP_DEFAULT_ENDIANNESS == 1,
+ * cf. sx_pk_ecop2mem_be()). mbedtls_mpi_write_binary() produces exactly
+ * that: it left-pads to the full width and converts LE -> BE. Using it
+ * (instead of a minimal-length copy) preserves the leading 0x00 byte of
+ * any coordinate/scalar whose value is < 2^(8*(sz-1)), which would
+ * otherwise be shifted and rejected (SX_ERR_POINT_NOT_ON_CURVE /
+ * SX_ERR_INVALID_SIGNATURE). See LMSTAX-1677.
+ */
 static void sx_pk_mpi2mem(const mbedtls_mpi *mpi, char *mem, int sz)
 {
-	int cursz = mbedtls_mpi_size(mpi);
-	int diff = sz - cursz;
+	int rc = mbedtls_mpi_write_binary(mpi, (unsigned char *)mem, (size_t)sz);
 
-	assert(cursz <= sz);
-	sx_clrpkmem(mem + cursz, diff);
-
-	char *ptr = (char*) mpi->p;
-	/* NB: Copy backwards to convert LE -> BE */
-	for (int i = 0; i < cursz; i += 1)
-		mem[i] = ptr[cursz - i - 1];
+	assert(rc == 0);
+	(void)rc;
 }
 
 static void sx_pk_kp2mem(const mbedtls_ecp_point *Q, char *mem_x, char * mem_y, int sz)
