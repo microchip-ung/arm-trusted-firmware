@@ -53,6 +53,8 @@
 #define BOOTSTRAP_DATA_HASH    'H'
 // Read register(s) (BL2U)
 #define BOOTSTRAP_READ_REG     'x'
+// Write (Output to) register(s) (BL2U)
+#define BOOTSTRAP_WRITE_REG    'O'
 // Write data to SRAM (BL2U)
 #define BOOTSTRAP_SEND_SRAM    'J'
 // Write SRAM data to device, with readback (BL2U)
