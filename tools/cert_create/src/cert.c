@@ -11,6 +11,7 @@
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/opensslv.h>
+#include <openssl/ec.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
@@ -23,6 +24,14 @@
 
 #define SERIAL_RAND_BITS	64
 #define RSA_SALT_LEN		32
+
+/*
+ * Maximum number of ECDSA signing attempts when screening out signatures
+ * whose r or s scalar has a leading zero byte (see ERRATA.md,
+ * ERR-LAN969X-001). Each attempt uses a fresh random k, so a clean signature
+ * is found almost immediately; the cap only bounds the loop.
+ */
+#define ECDSA_SIG_MAX_RETRIES	64
 
 cert_t *certs;
 unsigned int num_certs;
@@ -93,6 +102,103 @@ int cert_add_ext(X509 *issuer, X509 *subject, int nid, char *value)
 	return 1;
 }
 
+/*
+ * Return the coordinate/scalar width in bytes for an EC key, or 0 for a
+ * non-EC (e.g. RSA) key, for which no leading-zero screening is done.
+ */
+static int ec_operand_bytes(EVP_PKEY *pkey)
+{
+	if (EVP_PKEY_base_id(pkey) != EVP_PKEY_EC) {
+		return 0;
+	}
+	return (EVP_PKEY_bits(pkey) + 7) / 8;
+}
+
+/*
+ * Return 1 if both ECDSA signature scalars (r, s) of certificate 'x' occupy
+ * the full field width 'fb' (neither has a leading zero byte), else 0.
+ */
+static int cert_sig_full_width(X509 *x, int fb)
+{
+	const ASN1_BIT_STRING *psig = NULL;
+	const X509_ALGOR *palg = NULL;
+	const unsigned char *p;
+	const BIGNUM *r, *s;
+	ECDSA_SIG *sig;
+	int ok = 0;
+
+	X509_get0_signature(&psig, &palg, x);
+	if (psig == NULL || psig->data == NULL) {
+		return 0;
+	}
+
+	p = psig->data;
+	sig = d2i_ECDSA_SIG(NULL, &p, psig->length);
+	if (sig == NULL) {
+		return 0;
+	}
+
+	ECDSA_SIG_get0(sig, &r, &s);
+	ok = (BN_num_bytes(r) == fb) && (BN_num_bytes(s) == fb);
+
+	ECDSA_SIG_free(sig);
+	return ok;
+}
+
+/*
+ * Sign certificate 'x' once with issuer key 'ikey' using digest 'md_alg'.
+ * ECDSA draws a fresh random k on every call, so repeated invocations produce
+ * different signatures. Returns 1 on success, 0 on error.
+ */
+static int cert_sign_once(X509 *x, EVP_PKEY *ikey, int md_alg)
+{
+	EVP_MD_CTX *mdCtx;
+	EVP_PKEY_CTX *pKeyCtx = NULL;
+	int rc = 0;
+
+	mdCtx = EVP_MD_CTX_create();
+	if (mdCtx == NULL) {
+		ERR_print_errors_fp(stdout);
+		return 0;
+	}
+
+	if (!EVP_DigestSignInit(mdCtx, &pKeyCtx, get_digest(md_alg), NULL, ikey)) {
+		ERR_print_errors_fp(stdout);
+		goto out;
+	}
+
+	/*
+	 * Set additional parameters if issuing public key algorithm is RSA.
+	 * This is not required for ECDSA.
+	 */
+	if (EVP_PKEY_base_id(ikey) == EVP_PKEY_RSA) {
+		if (!EVP_PKEY_CTX_set_rsa_padding(pKeyCtx, RSA_PKCS1_PSS_PADDING)) {
+			ERR_print_errors_fp(stdout);
+			goto out;
+		}
+
+		if (!EVP_PKEY_CTX_set_rsa_pss_saltlen(pKeyCtx, RSA_SALT_LEN)) {
+			ERR_print_errors_fp(stdout);
+			goto out;
+		}
+
+		if (!EVP_PKEY_CTX_set_rsa_mgf1_md(pKeyCtx, get_digest(md_alg))) {
+			ERR_print_errors_fp(stdout);
+			goto out;
+		}
+	}
+
+	if (!X509_sign_ctx(x, mdCtx)) {
+		ERR_print_errors_fp(stdout);
+		goto out;
+	}
+
+	rc = 1;
+out:
+	EVP_MD_CTX_destroy(mdCtx);
+	return rc;
+}
+
 int cert_new(
 	int md_alg,
 	cert_t *cert,
@@ -109,8 +215,7 @@ int cert_new(
 	X509_NAME *name;
 	ASN1_INTEGER *sno;
 	int i, num, rc = 0;
-	EVP_MD_CTX *mdCtx;
-	EVP_PKEY_CTX *pKeyCtx = NULL;
+	int fb, attempt;
 
 	/* Create the certificate structure */
 	x = X509_new();
@@ -118,49 +223,20 @@ int cert_new(
 		return 0;
 	}
 
-	/* If we do not have a key, use the issuer key (the certificate will
-	 * become self signed). This happens in content certificates. */
+	/*
+	 * If we do not have a key, use the issuer key (the certificate will
+	 * become self signed). This happens in content certificates.
+	 */
 	if (!pkey) {
 		pkey = ikey;
 	}
 
-	/* If we do not have an issuer certificate, use our own (the certificate
-	 * will become self signed) */
+	/*
+	 * If we do not have an issuer certificate, use our own (the certificate
+	 * will become self signed)
+	 */
 	if (!issuer) {
 		issuer = x;
-	}
-
-	mdCtx = EVP_MD_CTX_create();
-	if (mdCtx == NULL) {
-		ERR_print_errors_fp(stdout);
-		goto END;
-	}
-
-	/* Sign the certificate with the issuer key */
-	if (!EVP_DigestSignInit(mdCtx, &pKeyCtx, get_digest(md_alg), NULL, ikey)) {
-		ERR_print_errors_fp(stdout);
-		goto END;
-	}
-
-	/*
-	 * Set additional parameters if issuing public key algorithm is RSA.
-	 * This is not required for ECDSA.
-	 */
-	if (EVP_PKEY_base_id(ikey) == EVP_PKEY_RSA) {
-		if (!EVP_PKEY_CTX_set_rsa_padding(pKeyCtx, RSA_PKCS1_PSS_PADDING)) {
-			ERR_print_errors_fp(stdout);
-			goto END;
-		}
-
-		if (!EVP_PKEY_CTX_set_rsa_pss_saltlen(pKeyCtx, RSA_SALT_LEN)) {
-			ERR_print_errors_fp(stdout);
-			goto END;
-		}
-
-		if (!EVP_PKEY_CTX_set_rsa_mgf1_md(pKeyCtx, get_digest(md_alg))) {
-			ERR_print_errors_fp(stdout);
-			goto END;
-		}
 	}
 
 	/* x509.v3 */
@@ -207,8 +283,25 @@ int cert_new(
 		}
 	}
 
-	if (!X509_sign_ctx(x, mdCtx)) {
-		ERR_print_errors_fp(stdout);
+	/*
+	 * Sign the certificate with the issuer key. For ECDSA, re-sign until
+	 * neither signature scalar (r, s) has a leading zero byte, which the
+	 * lan969x boot ROM's verifier mishandles (see ERRATA.md,
+	 * ERR-LAN969X-001). A fresh random k per attempt makes a clean
+	 * signature almost immediate.
+	 */
+	fb = ec_operand_bytes(ikey);
+	for (attempt = 0; attempt < ECDSA_SIG_MAX_RETRIES; attempt++) {
+		if (!cert_sign_once(x, ikey, md_alg)) {
+			goto END;
+		}
+		if (fb == 0 || cert_sig_full_width(x, fb)) {
+			break;
+		}
+	}
+	if (attempt == ECDSA_SIG_MAX_RETRIES) {
+		ERROR("%s: no full-width ECDSA signature after %d attempts\n",
+		      cert->cn, ECDSA_SIG_MAX_RETRIES);
 		goto END;
 	}
 
@@ -217,7 +310,6 @@ int cert_new(
 	cert->x = x;
 
 END:
-	EVP_MD_CTX_destroy(mdCtx);
 	return rc;
 }
 
