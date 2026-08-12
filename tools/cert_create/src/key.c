@@ -10,8 +10,12 @@
 #include <string.h>
 
 #include <openssl/conf.h>
+#include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#if USING_OPENSSL3
+#include <openssl/core_names.h>
+#endif
 
 #include "cert.h"
 #include "cmd_opt.h"
@@ -20,6 +24,71 @@
 #include "sha.h"
 
 #define MAX_FILENAME_LEN		1024
+
+/*
+ * Maximum number of EC key-generation attempts when screening out keys whose
+ * X or Y coordinate has a leading zero byte (see ERRATA.md, ERR-LAN969X-001).
+ */
+#define EC_KEY_GEN_MAX_RETRIES		64
+
+#ifndef OPENSSL_NO_EC
+#if !USING_OPENSSL3
+/* Return 1 if both affine coordinates of 'ec' are full field width, else 0. */
+static int ec_key_coords_full_width(const EC_KEY *ec)
+{
+	const EC_GROUP *grp;
+	const EC_POINT *pub;
+	BIGNUM *x, *y;
+	int fb, ok = 0;
+
+	if (ec == NULL) {
+		return 0;
+	}
+	grp = EC_KEY_get0_group(ec);
+	pub = EC_KEY_get0_public_key(ec);
+	x = BN_new();
+	y = BN_new();
+	if (grp != NULL && pub != NULL && x != NULL && y != NULL &&
+	    EC_POINT_get_affine_coordinates(grp, pub, x, y, NULL)) {
+		fb = (EC_GROUP_get_degree(grp) + 7) / 8;
+		ok = (BN_num_bytes(x) == fb) && (BN_num_bytes(y) == fb);
+	}
+	BN_free(x);
+	BN_free(y);
+	return ok;
+}
+#endif /* !USING_OPENSSL3 */
+
+/*
+ * Return 1 if 'pkey' is not EC, or is an EC key whose public X and Y
+ * coordinates both occupy the full field width (neither has a leading zero
+ * byte). A leading zero breaks the lan969x boot ROM ECDSA verifier
+ * (see ERRATA.md, ERR-LAN969X-001).
+ */
+static int pubkey_coords_full_width(EVP_PKEY *pkey)
+{
+	if (EVP_PKEY_base_id(pkey) != EVP_PKEY_EC) {
+		return 1;
+	}
+#if USING_OPENSSL3
+	{
+		int fb = (EVP_PKEY_bits(pkey) + 7) / 8;
+		BIGNUM *x = NULL, *y = NULL;
+		int ok = 0;
+
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_EC_PUB_X, &x) &&
+		    EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_EC_PUB_Y, &y)) {
+			ok = (BN_num_bytes(x) == fb) && (BN_num_bytes(y) == fb);
+		}
+		BN_free(x);
+		BN_free(y);
+		return ok;
+	}
+#else
+	return ec_key_coords_full_width(EVP_PKEY_get0_EC_KEY(pkey));
+#endif
+}
+#endif /* OPENSSL_NO_EC */
 
 key_t *keys;
 unsigned int num_keys;
@@ -96,14 +165,27 @@ err2:
 #if USING_OPENSSL3
 static int key_create_ecdsa(key_t *key, int key_bits, const char *curve)
 {
-	EVP_PKEY *ec = EVP_EC_gen(curve);
-	if (ec == NULL) {
-		printf("Cannot generate EC key\n");
-		return 0;
-	}
+	int attempt;
 
-	key->key = ec;
-	return 1;
+	for (attempt = 0; attempt < EC_KEY_GEN_MAX_RETRIES; attempt++) {
+		EVP_PKEY *ec = EVP_EC_gen(curve);
+
+		if (ec == NULL) {
+			printf("Cannot generate EC key\n");
+			return 0;
+		}
+		/*
+		 * Reject keys with a leading-zero coordinate, which the lan969x
+		 * boot ROM cannot verify (see ERRATA.md, ERR-LAN969X-001).
+		 */
+		if (pubkey_coords_full_width(ec)) {
+			key->key = ec;
+			return 1;
+		}
+		EVP_PKEY_free(ec);
+	}
+	printf("Cannot generate EC key without a leading-zero coordinate\n");
+	return 0;
 }
 
 static int key_create_ecdsa_nist(key_t *key, int key_bits)
@@ -125,13 +207,28 @@ static int key_create_ecdsa(key_t *key, int key_bits, const int curve_id)
 {
 	EC_KEY *ec;
 
+	int attempt;
+
 	ec = EC_KEY_new_by_curve_name(curve_id);
 	if (ec == NULL) {
 		printf("Cannot create EC key\n");
 		return 0;
 	}
-	if (!EC_KEY_generate_key(ec)) {
-		printf("Cannot generate EC key\n");
+	for (attempt = 0; attempt < EC_KEY_GEN_MAX_RETRIES; attempt++) {
+		if (!EC_KEY_generate_key(ec)) {
+			printf("Cannot generate EC key\n");
+			goto err;
+		}
+		/*
+		 * Reject keys with a leading-zero coordinate, which the lan969x
+		 * boot ROM cannot verify (see ERRATA.md, ERR-LAN969X-001).
+		 */
+		if (ec_key_coords_full_width(ec)) {
+			break;
+		}
+	}
+	if (attempt == EC_KEY_GEN_MAX_RETRIES) {
+		printf("Cannot generate EC key without a leading-zero coordinate\n");
 		goto err;
 	}
 	EC_KEY_set_flags(ec, EC_PKEY_NO_PARAMETERS);
@@ -201,6 +298,21 @@ int key_load(key_t *key, unsigned int *err_code)
 			k = PEM_read_PrivateKey(fp, &key->key, NULL, NULL);
 			fclose(fp);
 			if (k) {
+#ifndef OPENSSL_NO_EC
+				/*
+				 * A loaded key (e.g. the ROT key, whose hash is
+				 * committed to OTP) cannot be regenerated here,
+				 * so reject a leading-zero coordinate that the
+				 * lan969x boot ROM cannot verify (see ERRATA.md,
+				 * ERR-LAN969X-001).
+				 */
+				if (!pubkey_coords_full_width(key->key)) {
+					ERROR("%s: leading-zero pubkey coordinate (ERRATA.md)\n",
+					      key->fn);
+					*err_code = KEY_ERR_LOAD;
+					return 0;
+				}
+#endif
 				*err_code = KEY_ERR_NONE;
 				return 1;
 			} else {
