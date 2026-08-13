@@ -1083,6 +1083,38 @@ static void handle_read_reg(bootstrap_req_t *req)
 	bootstrap_TxAckData_arg(regbuf, req->len, req->arg0);
 }
 
+#define MAX_REG_WRITE	128	/* Arbitrary; (addr, value) pairs */
+static void handle_write_reg(bootstrap_req_t *req)
+{
+	static uint32_t regbuf[MAX_REG_WRITE * 2];
+	uint32_t i, npair;
+
+	/* Payload is an array of (address, value) 32-bit pairs */
+	if (req->len & (2 * sizeof(uint32_t) - 1)) {
+		bootstrap_TxNack("Write reg length not a multiple of 8");
+		return;
+	}
+	if (req->len > sizeof(regbuf)) {
+		bootstrap_TxNack("Max register count/request exceeded");
+		return;
+	}
+
+	if (!bootstrap_RxDataCrc(req, (uint8_t *)regbuf)) {
+		bootstrap_TxNack("Write reg rx data failed");
+		return;
+	}
+
+	/* Do the writes: regbuf[2i] = address, regbuf[2i + 1] = value.
+	 * Fire-and-forget (no readback): some registers are write-triggers
+	 * whose readback differs; callers verify with a separate read.
+	 */
+	npair = req->len / (2 * sizeof(uint32_t));
+	for (i = 0; i < npair; i++)
+		mmio_write_32(regbuf[2 * i], regbuf[2 * i + 1]);
+
+	bootstrap_TxAck();
+}
+
 static void handle_sram_info(bootstrap_req_t *req)
 {
 	/* Return SRAM length */
@@ -1140,6 +1172,8 @@ void lan966x_bl2u_bootstrap_monitor(void)
 			handle_data_hash(&req);
 		else if (is_cmd(&req, BOOTSTRAP_READ_REG))	// x - Read registers
 			handle_read_reg(&req);
+		else if (is_cmd(&req, BOOTSTRAP_WRITE_REG))	// O - Write registers
+			handle_write_reg(&req);
 		else if (is_cmd(&req, BOOTSTRAP_SRAM_INFO))	// s - Get SRAM info
 			handle_sram_info(&req);
 		else if (is_cmd(&req, BOOTSTRAP_SEND_SRAM))	// J - Upload SRAM
