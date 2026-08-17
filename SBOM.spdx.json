@@ -1,0 +1,159 @@
+{
+    "SPDXID": "SPDXRef-DOCUMENT",
+    "creationInfo": {
+        "created": "2026-08-14T08:08:48Z",
+        "creators": [
+            "Organization: Microchip Technology Inc.",
+            "Tool: hand-authored"
+        ],
+        "comment": "Component-level SBOM for the Microchip fork of ARM Trusted\nFirmware-A. Packages and licenses were derived from the in-tree\nSPDX-License-Identifier tags, the LICENSE/COPYING files, and per-component\ncopyright notices. FilesAnalyzed is false for every package (no per-file\nhashing); the SBOM is at package granularity. No package-manager manifests\nexist in this source tree, so automated scanners under-report it."
+    },
+    "dataLicense": "CC0-1.0",
+    "name": "sw-arm-trusted-firmware",
+    "spdxVersion": "SPDX-2.3",
+    "documentNamespace": "https://bitbucket.microchip.com/unge/sw-arm-trusted-firmware/spdxdocs/sw-arm-trusted-firmware-5988e0d20827",
+    "packages": [
+        {
+            "SPDXID": "SPDXRef-Package-tfa",
+            "comment": "Microchip fork of ARM Trusted Firmware-A v2.8.17. The\nproject's primary license is BSD-3-Clause; the aggregate distribution also\nincludes the separately-listed bundled components below, plus a few\ndual-licensed device-tree binding headers (GPL-2.0-or-later OR MIT, and MIT)\nunder include/dt-bindings and the microchip platform dirs.",
+            "copyrightText": "Copyright (c) 2013-2022, Arm Limited and Contributors. All rights reserved.\nCopyright (C) 2021-2026 Microchip Technology Inc. and its subsidiaries.",
+            "downloadLocation": "git+ssh://git@bitbucket.microchip.com/unge/sw-arm-trusted-firmware.git@5988e0d2082777070c08a0d28c06c6950bfc4d43",
+            "filesAnalyzed": false,
+            "licenseConcluded": "BSD-3-Clause",
+            "licenseDeclared": "BSD-3-Clause",
+            "name": "sw-arm-trusted-firmware",
+            "originator": "Organization: Arm Limited",
+            "supplier": "Organization: Microchip Technology Inc.",
+            "versionInfo": "2.8.17-mchp3-6-g5988e0d20827"
+        },
+        {
+            "SPDXID": "SPDXRef-Package-mbedtls",
+            "comment": "Cryptographic library used by the trusted boot chain. Cloned\nat build time (not committed) into mbedtls/; the build pins tag mbedtls-2.28.0.",
+            "copyrightText": "Copyright The Mbed TLS Contributors",
+            "downloadLocation": "git+https://github.com/microchip-ung/mbedtls.git@mbedtls-2.28.0",
+            "filesAnalyzed": false,
+            "licenseConcluded": "Apache-2.0",
+            "licenseDeclared": "Apache-2.0",
+            "name": "mbedtls",
+            "originator": "Organization: Arm Limited (Mbed TLS project)",
+            "supplier": "Organization: Microchip Technology Inc.",
+            "versionInfo": "2.28.0"
+        },
+        {
+            "SPDXID": "SPDXRef-Package-zlib",
+            "comment": "Inflate/gunzip support, vendored under lib/zlib.",
+            "copyrightText": "Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler",
+            "downloadLocation": "https://zlib.net/",
+            "filesAnalyzed": false,
+            "licenseConcluded": "Zlib",
+            "licenseDeclared": "Zlib",
+            "name": "zlib",
+            "originator": "Person: Jean-loup Gailly and Mark Adler",
+            "supplier": "Organization: Microchip Technology Inc.",
+            "versionInfo": "1.2.13"
+        },
+        {
+            "SPDXID": "SPDXRef-Package-libfdt",
+            "comment": "Flattened device tree access library (from dtc), vendored\nunder lib/libfdt and include/lib/libfdt. The related FIT-image helper under\nlib/libfit carries the same dual license.",
+            "copyrightText": "Copyright (C) 2006 David Gibson, IBM Corporation.",
+            "downloadLocation": "https://git.kernel.org/pub/scm/utils/dtc/dtc.git",
+            "filesAnalyzed": false,
+            "licenseConcluded": "GPL-2.0-or-later OR BSD-2-Clause",
+            "licenseDeclared": "GPL-2.0-or-later OR BSD-2-Clause",
+            "name": "libfdt",
+            "originator": "Organization: Device Tree Compiler project",
+            "supplier": "Organization: Microchip Technology Inc."
+        },
+        {
+            "SPDXID": "SPDXRef-Package-compiler-rt",
+            "comment": "Compiler builtins (e.g. 64-bit integer helpers) from LLVM\ncompiler-rt, vendored under lib/compiler-rt/builtins.",
+            "copyrightText": "Copyright (c) 2009-2016 by the contributors listed in CREDITS.TXT",
+            "downloadLocation": "https://github.com/llvm/llvm-project",
+            "filesAnalyzed": false,
+            "licenseConcluded": "Apache-2.0 WITH LLVM-exception",
+            "licenseDeclared": "Apache-2.0 WITH LLVM-exception",
+            "name": "compiler-rt-builtins",
+            "originator": "Organization: LLVM project",
+            "supplier": "Organization: Microchip Technology Inc."
+        },
+        {
+            "SPDXID": "SPDXRef-Package-libc",
+            "comment": "TF-A minimal C library, vendored under lib/libc and\ninclude/lib/libc; predominantly BSD-3-Clause with a few ISC and\nBSD-2-Clause-FreeBSD files.",
+            "copyrightText": "Copyright (c) the Regents of the University of California and Arm Limited",
+            "downloadLocation": "git+https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git",
+            "filesAnalyzed": false,
+            "licenseConcluded": "BSD-3-Clause AND ISC AND BSD-2-Clause-Views",
+            "licenseDeclared": "BSD-3-Clause AND ISC AND BSD-2-Clause-Views",
+            "name": "tf-a-libc",
+            "originator": "Organization: Arm Limited",
+            "supplier": "Organization: Microchip Technology Inc.",
+            "versionInfo": "2.8.17-mchp3-6-g5988e0d20827"
+        },
+        {
+            "SPDXID": "SPDXRef-Package-silexpk",
+            "comment": "Silex BA414e public-key accelerator library used by the\nlan969x ECDSA driver, vendored under drivers/microchip/crypto/silex.",
+            "copyrightText": "Copyright (c) 2014-2021 Silex Insight sa\nCopyright (c) 2014-2021 Beerten Engineering scs",
+            "downloadLocation": "NOASSERTION",
+            "filesAnalyzed": false,
+            "licenseConcluded": "BSD-3-Clause",
+            "licenseDeclared": "BSD-3-Clause",
+            "name": "silexpk",
+            "originator": "Organization: Silex Insight sa and Beerten Engineering scs",
+            "supplier": "Organization: Microchip Technology Inc."
+        },
+        {
+            "SPDXID": "SPDXRef-Package-st-drivers",
+            "comment": "STMicroelectronics clock drivers and device-tree bindings\n(drivers/st, include/drivers/st, include/dt-bindings), imported from upstream\nTF-A. Dual-licensed GPL-2.0-or-later OR BSD-3-Clause.",
+            "copyrightText": "Copyright (C) STMicroelectronics 2018-2022 - All Rights Reserved",
+            "downloadLocation": "git+https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git",
+            "filesAnalyzed": false,
+            "licenseConcluded": "GPL-2.0-or-later OR BSD-3-Clause",
+            "licenseDeclared": "GPL-2.0-or-later OR BSD-3-Clause",
+            "name": "st-drivers",
+            "originator": "Organization: STMicroelectronics",
+            "supplier": "Organization: Microchip Technology Inc."
+        }
+    ],
+    "relationships": [
+        {
+            "spdxElementId": "SPDXRef-DOCUMENT",
+            "relatedSpdxElement": "SPDXRef-Package-tfa",
+            "relationshipType": "DESCRIBES"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-mbedtls",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-zlib",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-libfdt",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-compiler-rt",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-libc",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-silexpk",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-Package-tfa",
+            "relatedSpdxElement": "SPDXRef-Package-st-drivers",
+            "relationshipType": "CONTAINS"
+        }
+    ]
+}
